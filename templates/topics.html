@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Topics - Research Paper Tracker{% endblock %}
+
+{% block content %}
+<div class="topics-page">
+    <div class="page-header">
+        <h1>Topics</h1>
+        <p>Browse research topics and categories</p>
+    </div>
+    
+    {% if is_admin and not topic %}
+    <!-- Add Topic Form (Admin Only) -->
+    <div class="add-topic-section">
+        <form method="POST" action="{{ url_for('topics.add_topic') }}" class="add-topic-form">
+            <div class="form-group">
+                <input type="text" name="topic_name" placeholder="Enter new topic name" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Topic</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    {% if topic %}
+    <!-- Topic Detail View -->
+    <div class="topic-detail-view">
+        <a href="{{ url_for('topics.topics') }}" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Topics
+        </a>
+        
+        <div class="topic-detail-card">
+            <div class="topic-detail-header">
+                <div class="topic-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                </div>
+                <div class="topic-detail-info">
+                    <h2>{{ topic.topic_name }}</h2>
+                    <p class="topic-count">{{ topic.paper_count }} papers</p>
+                </div>
+            </div>
+            
+            <h3>Papers in {{ topic.topic_name }}</h3>
+            <div class="papers-list">
+                {% for paper in papers %}
+                <div class="paper-item">
+                    <a href="{{ url_for('papers.paper_detail', paper_id=paper.paper_id) }}" class="paper-item-title">
+                        {{ paper.title }}
+                    </a>
+                    <div class="paper-item-meta">
+                        <span>{{ paper.author.name if paper.author else 'Unknown' }}</span>
+                        <span>{{ paper.journal_name }}</span>
+                        <span>{{ paper.publication_date.strftime('%Y') if paper.publication_date else 'N/A' }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="no-papers">No papers found for this topic</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Topics Grid View -->
+    <div class="topics-grid">
+        {% for topic in topics %}
+        <div class="topic-card" onclick="viewTopic({{ topic.topic_id }})">
+            <div class="topic-badge-large">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                </svg>
+                <span>{{ topic.topic_name }}</span>
+            </div>
+            <div class="topic-meta">
+                <span class="paper-count">{{ topic.paper_count }} papers</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-topics">No topics found</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function viewTopic(topicId) {
+    window.location.href = `/topics/${topicId}`;
+}
+</script>
+{% endblock %}

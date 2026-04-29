@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Papers - Research Paper Tracker{% endblock %}
+
+{% block content %}
+<div class="papers-page">
+    <div class="page-header">
+        <h1>Papers</h1>
+        <p>Manage your research papers</p>
+    </div>
+    
+    <!-- Filters and Search -->
+    <div class="filters-bar">
+        <div class="search-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search by title or author..." 
+                   value="{{ search_query }}" class="live-search">
+        </div>
+        
+        <div class="filter-group">
+            <select id="statusFilter" class="filter-select">
+                <option value="">All Statuses</option>
+                {% for status in statuses %}
+                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="topicFilter" class="filter-select">
+                <option value="">All Topics</option>
+                {% for topic in topics %}
+                <option value="{{ topic.topic_name }}" {% if topic_filter == topic.topic_name %}selected{% endif %}>{{ topic.topic_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="action-buttons">
+            {% if is_admin %}
+            <button class="btn btn-primary" onclick="openAddPaperModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Paper
+            </button>
+            {% endif %}
+            <button class="btn btn-secondary" onclick="exportToCSV()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export CSV
+            </button>
+        </div>
+    </div>
+    
+    <!-- Papers Table -->
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Journal</th>
+                    <th>Date</th>
+                    <th>Citations</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in papers %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('papers.paper_detail', paper_id=paper.paper_id) }}" class="paper-link">
+                            {{ paper.title }}
+                        </a>
+                    </td>
+                    <td>{{ paper.author.name if paper.author else 'N/A' }}</td>
+                    <td>{{ paper.journal_name }}</td>
+                    <td>{{ paper.publication_date.strftime('%Y-%m-%d') if paper.publication_date else 'N/A' }}</td>
+                    <td>
+                        <span class="citation-badge">{{ paper.citations }}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ paper.status|lower }}">{{ paper.status }}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons-cell">
+                            <a href="{{ url_for('papers.paper_detail', paper_id=paper.paper_id) }}" 
+                               class="btn-icon btn-view" title="View">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </a>
+                            {% if is_admin %}
+                            <button class="btn-icon btn-edit" onclick="openEditPaperModal({{ paper.paper_id }})" title="Edit">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <form method="POST" action="{{ url_for('papers.delete_paper', paper_id=paper.paper_id) }}" 
+                                  class="delete-form" onsubmit="return confirm('Are you sure you want to delete this paper?');">
+                                <button type="submit" class="btn-icon btn-delete" title="Delete">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="no-data">No papers found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('papers.papers', page=pagination.prev_num, search=search_query, status=status_filter, topic=topic_filter) }}" 
+           class="pagination-link">Previous</a>
+        {% endif %}
+        
+        {% for page_num in pagination.iter_pages() %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <span class="pagination-link active">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('papers.papers', page=page_num, search=search_query, status=status_filter, topic=topic_filter) }}" 
+                   class="pagination-link">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+            <span class="pagination-ellipsis">...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <a href="{{ url_for('papers.papers', page=pagination.next_num, search=search_query, status=status_filter, topic=topic_filter) }}" 
+           class="pagination-link">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add/Edit Paper Modal -->
+<div id="paperModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Paper</h2>
+            <button class="modal-close" onclick="closePaperModal()">&times;</button>
+        </div>
+        <form id="paperForm" method="POST" action="">
+            <input type="hidden" id="paperId" name="paper_id" value="">
+            <input type="hidden" id="formAction" name="form_action" value="add">
+            
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="abstract">Abstract</label>
+                <textarea id="abstract" name="abstract" rows="4"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="journal_name">Journal Name *</label>
+                <input type="text" id="journal_name" name="journal_name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="publication_date">Publication Date *</label>
+                    <input type="date" id="publication_date" name="publication_date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="citations">Citations</label>
+                    <input type="number" id="citations" name="citations" value="0" min="0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="status">Status *</label>
+                <select id="status" name="status" required>
+                    <option value="Draft">Draft</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="Published">Published</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="author_id">Author *</label>
+                <select id="author_id" name="author_id" required>
+                    <option value="">Select an author</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="topics">Topics</label>
+                <div id="topicsCheckboxes" class="checkbox-group">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePaperModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">Save Paper</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load authors and topics for modal
+document.addEventListener('DOMContentLoaded', function() {
+    loadAuthors();
+    loadTopics();
+    
+    // Live search
+    const searchInput = document.getElementById('searchInput');
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            const url = new URL(window.location);
+            url.searchParams.set('search', searchInput.value);
+            window.location = url;
+        }, 500);
+    });
+    
+    // Filter change handlers
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const url = new URL(window.location);
+        url.searchParams.set('status', this.value);
+        window.location = url;
+    });
+    
+    document.getElementById('topicFilter').addEventListener('change', function() {
+        const url = new URL(window.location);
+        url.searchParams.set('topic', this.value);
+        window.location = url;
+    });
+});
+
+function loadAuthors() {
+    fetch('/papers/api/authors')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('author_id');
+            data.forEach(author => {
+                const option = document.createElement('option');
+                option.value = author.id;
+                option.textContent = author.name;
+                select.appendChild(option);
+            });
+        });
+}
+
+function loadTopics() {
+    fetch('/papers/api/topics')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('topicsCheckboxes');
+            data.forEach(topic => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `
+                    <input type="checkbox" name="topic_ids" value="${topic.id}">
+                    ${topic.name}
+                `;
+                container.appendChild(label);
+            });
+        });
+}
+
+function openAddPaperModal() {
+    document.getElementById('modalTitle').textContent = 'Add New Paper';
+    document.getElementById('paperForm').action = "{{ url_for('papers.add_paper') }}";
+    document.getElementById('paperForm').reset();
+    document.getElementById('paperModal').classList.add('active');
+}
+
+function openEditPaperModal(paperId) {
+    document.getElementById('modalTitle').textContent = 'Edit Paper';
+    document.getElementById('paperForm').action = "{{ url_for('papers.edit_paper', paper_id=0) }}".replace('0', paperId);
+    
+    // Fetch paper data
+    fetch(`/api/papers/${paperId}`)
+        .then(response => response.json())
+        .then(data => {
+            const paper = data.data;
+            document.getElementById('title').value = paper.title;
+            document.getElementById('abstract').value = paper.abstract || '';
+            document.getElementById('journal_name').value = paper.journal_name;
+            document.getElementById('publication_date').value = paper.publication_date;
+            document.getElementById('citations').value = paper.citations;
+            document.getElementById('status').value = paper.status;
+            document.getElementById('author_id').value = paper.author_id;
+            
+            // Set topics
+            document.querySelectorAll('input[name="topic_ids"]').forEach(checkbox => {
+                checkbox.checked = paper.topics.includes(parseInt(checkbox.value));
+            });
+            
+            document.getElementById('paperModal').classList.add('active');
+        });
+}
+
+function closePaperModal() {
+    document.getElementById('paperModal').classList.remove('active');
+}
+
+function exportToCSV() {
+    window.location.href = "{{ url_for('papers.export_csv') }}";
+}
+
+document.getElementById('paperForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    btn.classList.add('loading');
+});
+</script>
+{% endblock %}

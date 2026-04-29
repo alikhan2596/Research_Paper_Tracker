@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Authors - Research Paper Tracker{% endblock %}
+
+{% block content %}
+<div class="authors-page">
+    <div class="page-header">
+        <h1>Authors</h1>
+        <p>Browse and manage research authors</p>
+    </div>
+    
+    <!-- Search -->
+    <div class="search-bar">
+        <div class="search-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search by name or university..." 
+                   value="{{ search_query }}" class="live-search">
+        </div>
+        
+        {% if is_admin %}
+        <button class="btn btn-primary" onclick="openAddAuthorModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Author
+        </button>
+        {% endif %}
+    </div>
+    
+    {% if author %}
+    <!-- Author Detail View -->
+    <div class="author-detail-view">
+        <a href="{{ url_for('authors.authors') }}" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Authors
+        </a>
+        
+        <div class="author-detail-card">
+            <div class="author-detail-header">
+                <div class="author-avatar">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="author-detail-info">
+                    <h2>{{ author.name }}</h2>
+                    <p class="author-email">{{ author.email }}</p>
+                    <div class="author-meta">
+                        <span class="meta-tag">{{ author.university }}</span>
+                        <span class="meta-tag">{{ author.country }}</span>
+                    </div>
+                </div>
+                <div class="author-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ author.paper_count }}</div>
+                        <div class="stat-label">Papers</div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Papers by {{ author.name }}</h3>
+            <div class="papers-list">
+                {% for paper in papers %}
+                <div class="paper-item">
+                    <a href="{{ url_for('papers.paper_detail', paper_id=paper.paper_id) }}" class="paper-item-title">
+                        {{ paper.title }}
+                    </a>
+                    <div class="paper-item-meta">
+                        <span>{{ paper.journal_name }}</span>
+                        <span>{{ paper.publication_date.strftime('%Y') if paper.publication_date else 'N/A' }}</span>
+                        <span class="status-badge status-{{ paper.status|lower }}">{{ paper.status }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="no-papers">No papers found for this author</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Authors Grid View -->
+    <div class="authors-grid">
+        {% for author in authors %}
+        <div class="author-card" onclick="viewAuthor({{ author.author_id }})">
+            <div class="author-card-header">
+                <div class="author-avatar">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h3>{{ author.name }}</h3>
+            </div>
+            <div class="author-card-body">
+                <div class="author-info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 21h18"></path>
+                        <path d="M5 21V7l8-4 8 4v14"></path>
+                    </svg>
+                    <span>{{ author.university }}</span>
+                </div>
+                <div class="author-info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    <span>{{ author.country }}</span>
+                </div>
+            </div>
+            <div class="author-card-footer">
+                <span class="paper-count">{{ author.paper_count }} papers</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-authors">No authors found</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Author Modal -->
+<div id="authorModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Author</h2>
+            <button class="modal-close" onclick="closeAuthorModal()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('authors.add_author') }}" id="authorForm">
+            <div class="form-group">
+                <label for="author_name">Name *</label>
+                <input type="text" id="author_name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="author_email">Email *</label>
+                <input type="email" id="author_email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="author_university">University *</label>
+                <input type="text" id="author_university" name="university" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="author_country">Country *</label>
+                <input type="text" id="author_country" name="country" required>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAuthorModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="authorSubmitBtn">
+                    <span class="btn-text">Add Author</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live search
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            const url = new URL(window.location);
+            url.searchParams.set('search', searchInput.value);
+            window.location = url;
+        }, 500);
+    });
+}
+
+function viewAuthor(authorId) {
+    window.location.href = `/authors/${authorId}`;
+}
+
+function openAddAuthorModal() {
+    document.getElementById('authorModal').classList.add('active');
+}
+
+function closeAuthorModal() {
+    document.getElementById('authorModal').classList.remove('active');
+}
+
+document.getElementById('authorForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('authorSubmitBtn');
+    btn.classList.add('loading');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Research Paper Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Overview of your research papers and statistics</p>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_papers }}</div>
+                <div class="stat-label">Total Papers</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-green">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_authors }}</div>
+                <div class="stat-label">Total Authors</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_citations }}</div>
+                <div class="stat-label">Total Citations</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_topics }}</div>
+                <div class="stat-label">Total Topics</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Top 5 Authors by Papers</h3>
+            <canvas id="authorsChart"></canvas>
+        </div>
+        
+        <div class="chart-card">
+            <h3>Papers by Status</h3>
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="charts-row">
+        <div class="chart-card chart-full">
+            <h3>Papers Published by Year</h3>
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="recent-activity">
+        <h3>Recent Papers</h3>
+        <div class="activity-list">
+            {% for paper in recent_papers %}
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    </svg>
+                </div>
+                <div class="activity-content">
+                    <a href="{{ url_for('papers.paper_detail', paper_id=paper.paper_id) }}" class="activity-title">
+                        {{ paper.title }}
+                    </a>
+                    <div class="activity-meta">
+                        <span>{{ paper.author.name if paper.author else 'Unknown' }}</span>
+                        <span class="activity-date">{{ paper.created_at.strftime('%b %d, %Y') if paper.created_at else 'N/A' }}</span>
+                    </div>
+                </div>
+                <span class="activity-status status-{{ paper.status|lower }}">{{ paper.status }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Top Authors Bar Chart
+const authorsCtx = document.getElementById('authorsChart').getContext('2d');
+new Chart(authorsCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for author in top_authors %}'{{ author[0] }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Number of Papers',
+            data: [{% for author in top_authors %}{{ author[1] }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+// Status Doughnut Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for status in status_counts %}'{{ status[0] }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for status in status_counts %}{{ status[1] }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(251, 191, 36, 0.8)',
+                'rgba(239, 68, 68, 0.8)'
+            ],
+            borderColor: [
+                'rgba(34, 197, 94, 1)',
+                'rgba(251, 191, 36, 1)',
+                'rgba(239, 68, 68, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' }
+        }
+    }
+});
+
+// Yearly Papers Line Chart
+const yearlyCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(yearlyCtx, {
+    type: 'line',
+    data: {
+        labels: [{% for paper in yearly_papers %}'{{ paper[0]|int }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Papers Published',
+            data: [{% for paper in yearly_papers %}{{ paper[1] }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgba(6, 182, 212, 1)',
+            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endblock %}
