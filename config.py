@@ -6,7 +6,8 @@ Handles environment variables and database connection settings
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables from .env file (for local development)
+# In Azure, environment variables are set in App Settings
 load_dotenv()
 
 class Config:
@@ -16,10 +17,11 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     
     # Azure SQL Database Configuration
-    DB_SERVER = os.getenv('DB_SERVER')
-    DB_NAME = os.getenv('DB_NAME')
-    DB_USER = os.getenv('DB_USER')
-    DB_PASSWORD = os.getenv('DB_PASSWORD')
+    # In Azure, these are set as App Settings
+    DB_SERVER = os.getenv('DB_SERVER') or os.getenv('SQLSERVER') or os.getenv('SQLAZURECONNSTR_SERVER')
+    DB_NAME = os.getenv('DB_NAME') or os.getenv('SQLDATABASE') or os.getenv('SQLAZURECONNSTR_DATABASE')
+    DB_USER = os.getenv('DB_USER') or os.getenv('SQLUSER') or os.getenv('SQLAZURECONNSTR_UID')
+    DB_PASSWORD = os.getenv('DB_PASSWORD') or os.getenv('SQLPASSWORD') or os.getenv('SQLAZURECONNSTR_PASSWORD')
     
     # SQLAlchemy Connection String for Azure SQL with ODBC Driver 18
     # Format: mssql+pyodbc://<username>:<password>@<server>/<database>?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes
@@ -29,11 +31,21 @@ class Config:
         "&Encrypt=yes"
         "&TrustServerCertificate=yes"
         "&Connection Timeout=30"
+        "&Timeout=30"
     )
     
     # SQLAlchemy settings
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # Set to True for SQL query debugging
+    
+    # Connection pool settings for Azure
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 5,
+        'max_overflow': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 3600,  # Recycle connections every hour
+        'pool_pre_ping': True,  # Test connections before using
+    }
     
     # Session configuration
     SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS

@@ -31,8 +31,12 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Initialize database
+    # Initialize database with engine options
     db.init_app(app)
+    
+    # Configure engine options if specified
+    if hasattr(app.config, 'get') and app.config.get('SQLALCHEMY_ENGINE_OPTIONS'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = app.config['SQLALCHEMY_ENGINE_OPTIONS']
     
     # Initialize Flask-Login
     login_manager = LoginManager()
